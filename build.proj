@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" DefaultTargets="SharedMetadata" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <RepoRoot>$(MSBuildThisFileDirectory)</RepoRoot>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Files Include="data/*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <IsNice Include="data/a.txt" />
+    <IsNice Include="data/b.txt" />
+
+    <Ranking Include="data/a.txt">
+      <Stars>1</Stars>
+    </Ranking>
+    <Ranking Include="data/b.txt">
+      <Stars>4</Stars>
+    </Ranking>
+    <Ranking Include="data/c.txt">
+      <Stars>10</Stars>
+    </Ranking>
+  </ItemGroup>
+
+  <Target Name="SharedMetadata"
+          DependsOnTargets="AddSharedMetadataKey;
+                            AddConditionalMetadata;
+                            BatchOnSharedMetadata;
+                            AddRelatedFiles;
+                            AddRelatedFileMetadata;"
+          Inputs="%(Files.RelatedFiles)"
+          Outputs="@(Files->'%(Identity)')">
+    <Message Text="%(Files.Identity) : %(Files.ProjectPath) : %(Files.IsNice) : %(Files.Ranking) : %(Files.RelatedFiles)" />
+  </Target>
+
+  <Target Name="AddSharedMetadataKey">
+    <Message Text="Adding ProjectPath to each ItemGroup for easy joining. Also adds a few Metadatas to the Ranking itemgroup to show that you can use custom Metadata that was added at Item creation time as well as immediately during an augmentation." />
+    <ItemGroup>
+      <Files>
+        <ProjectPath>%(Files.Identity)</ProjectPath>
+      </Files>
+      <IsNice>
+        <ProjectPath>%(IsNice.Identity)</ProjectPath>
+      </IsNice>
+      <Ranking>
+        <ProjectPath>%(Ranking.Identity)</ProjectPath>
+        <HyphenatedStars>%(Ranking.Stars)-star</HyphenatedStars>
+        <FriendlyStars>%(Ranking.HyphenatedStars) ranking is not so friendly. Can't rely on Metadata defined in the same Xml node.</FriendlyStars>
+      </Ranking>
+      <Ranking>
+        <FriendlyStars>%(Ranking.HyphenatedStars) ranking is fine!</FriendlyStars>
+      </Ranking>
+    </ItemGroup>
+    <ItemGroup>
+      <Ranking>
+        <DistantStars>%(Ranking.HyphenatedStars) ranking is more verbose but also fine!</DistantStars>
+      </Ranking>
+    </ItemGroup>
+
+    <Message Text="%(Ranking.Identity) %(Ranking.Stars) %(Ranking.HyphenatedStars) %(Ranking.FriendlyStars) %(Ranking.FriendlierStars) %(Ranking.DistantStars)" />
+  </Target>
+
+  <Target Name="AddRelatedFiles"
+          DependsOnTargets="BeforeAddRelatedFiles"
+          Outputs="%(Files.Identity)">
+    <Message Text="The target is currently running for %(Files.Identity)" />
+
+    <ItemGroup>
+      <RelatedFiles Include="data/%(Files.FileName)/*.*">
+        <ProjectPath>%(Files.Identity)</ProjectPath>
+      </RelatedFiles>
+    </ItemGroup>
+
+    <Message Text="For Project %(ProjectPath) found inputs: @(RelatedFiles)" />
+  </Target>
+
+  <Target Name="BeforeAddRelatedFiles">
+    <Message Text="%25(Files.Identity) in the Outputs of Target AddRelatedFiles causes Target Batching, executing the target  once per 'Files' Item." />
+    <Message Text="The RelatedFiles ItemGroup lists all 'Input' files contained in a 'Project'-specific subdirectory." />
+    <Message Text="These messages were written in a separate target so they are only displayed once. Messages in the Batched Target AddRelatedFiles are displayed once per 'Files' Item." />
+    <Message Text="The second Message in the AddRelatedFiles target uses Shared Metadata to associate RelatedFiles with their Files. The %25(ProjectPath) is the shared 'key'" />
+  </Target>
+
+  <Target Name="AddConditionalMetadata"
+          DependsOnTargets="BeforeAddConditionalMetadata"
+          Outputs="%(IsNice.Identity)">
+    <PropertyGroup>
+      <CurrentNicety>%(IsNice.Identity)</CurrentNicety>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <Files Condition=" '%(Files.Identity)' == '$(CurrentNicety)' ">
+        <IsNice>yes</IsNice>
+      </Files>
+    </ItemGroup>
+  </Target>
+
+  <Target Name="BeforeAddConditionalMetadata">
+    <Message Text="%25(IsNice.Identity) in the Outputs of Target AddConditionalMetadata causes Target Batching, executing the Target once per IsNice." />
+    <Message Text="Unlike AddRelatedFiles, which also uses Target Batching, our filter requires that we define a local property to track the value of the Batch iteration. I believe this is because the Condition on the ItemList introduces another form of batching which conflicts with our Task Batching. Need to dig further..." />
+    <Message Text="AddConditionalMetadata shows adding new Metadata to an existing list by batching on some shared Metadata and then updating any Item that shares that Metadata." />
+  </Target>
+
+  <Target Name="BatchOnSharedMetadata">
+    <Message Text="Batched on ProjectPath: %(ProjectPath) : @(Files) @(Ranking->'%(FriendlyStars)')" />
+    <ItemGroup>
+      <Files>
+        <ProjectPath>%(ProjectPath)</ProjectPath>
+        <Ranking>@(Ranking->'%(FriendlyStars)')</Ranking>
+      </Files>
+    </ItemGroup> 
+
+  </Target>
+
+  <Target Name="AddRelatedFileMetadata"
+          Outputs="%(Files.ProjectPath)">
+    <PropertyGroup>
+      <CurrentProject>%(Files.ProjectPath)</CurrentProject>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <Files Condition=" '%(ProjectPath)' == '$(CurrentProject)' ">
+        <RelatedFiles>@(RelatedFiles)</RelatedFiles>
+      </Files>
+    </ItemGroup>
+    
+  </Target>
+</Project>
